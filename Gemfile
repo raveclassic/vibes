@@ -36,5 +36,8 @@ gem 'jquery-rails'
 # To use debugger
 # gem 'ruby-debug19', :require => 'ruby-debug'
 
+gem 'mongo'
+require mongo
+
 source 'http://gemcutter.org'
 gem "mongo_mapper"
