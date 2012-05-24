@@ -1,10 +1,10 @@
 function appInit() {
 	app = new function() {
 		ui = new UI();
-		setInterval(function() {
-			Graph.redraw();
-			//UI.stage.draw();
-		}, 1);
+		// setInterval(function() {
+		// 			//Graph.redraw();
+		// 			//UI.stage.draw();
+		// 		}, 1);
 	};
 }
 

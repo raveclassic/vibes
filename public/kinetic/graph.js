@@ -1,7 +1,22 @@
 function Graph(stage, content) {
-	Graph.init(stage, content);
-	Graph.generate();
+    Graph.init(stage, content);
+    //Graph.generate();
 };
+
+/* DATA TYPES
+Node {
+	int id,
+	string name,
+	Node[] connected, //references
+	Shape shape, //shape container
+	bool created, //used for recursive creating of shapes, actually used only once
+	int[] inputLinesFrom //used for the net visualization
+}
+Shape : Kinetic.Shape{
+	Shape[] connected, //references
+	Node data //nested node
+}
+*/
 
 Graph.init = function(stage, content) {
     this.lambda1 = 0.1;
@@ -9,15 +24,49 @@ Graph.init = function(stage, content) {
     this.lu = 150;
     this.k1 = 1;
     this.k2 = 0.01;
-	this.groupLayer = new Kinetic.Layer();
-	this.linesLayer = new Kinetic.Layer();
-	this.content = content;
-	this.stage = stage;
+    this.shapesLayer = new Kinetic.Layer();
+    this.linesLayer = new Kinetic.Layer();
+    this.content = content;
+    this.stage = stage;
+    //
+    this.create(content);
+    this.stage.add(this.linesLayer);
+    this.stage.add(this.shapesLayer);
+};
+
+Graph.create = function(nodes, initialIndex) {
+    var initialNode;
+    if (initialIndex && initialIndex < nodes.length) {
+        initialNode = nodes[initialIndex];
+    } else {
+        //take random
+        initialNode = nodes[jQuery.random(nodes.length - 1)];
+    }
+    if (initialNode) {
+        var initialShape = this.createShape(initialNode, this.stage.getWidth() / 2, this.stage.getHeight() / 2);
+        this.shapesLayer.add(initialShape);
+        this.createNext(initialShape);
+    }
+    this.drawNet();
+};
+
+//recursive creation
+Graph.createNext = function(currentShape) {
+    for (var i = 0; i < currentShape.data.connected.length; i++) {
+        if (!currentShape.data.connected[i].dest.created) {
+            var rx = jQuery.random(this.stage.getWidth());
+            var ry = jQuery.random(this.stage.getHeight());
+            var nextShape = this.createShape(currentShape.data.connected[i].dest, rx, ry);
+            //currentShape.connected.push(nextShape);
+            this.shapesLayer.add(nextShape);
+            this.createNext(nextShape);
+        }
+    }
 };
 
 Graph.redraw = function() {
-	var nodes = this.groupLayer.children;
-	this.totalEnergy = {
+    var nodes = this.shapesLayer.children;
+    this.totalEnergy = {
         x: 0,
         y: 0
     };
@@ -45,8 +94,12 @@ Graph.redraw = function() {
                 var lx = nodes[i].getX() - nodes[i].connected[j].getX();
                 var ly = nodes[i].getY() - nodes[i].connected[j].getY();
                 var length = Math.sqrt(lx * lx + ly * ly);
-                force.x += -this.k1 * (length - /*nodes[i].connected[j].inputWeight **/ 100) * lx / length;
-                force.y += -this.k1 * (length - /*nodes[i].connected[j].inputWeight **/ 100) * ly / length;
+                force.x += -this.k1 * (length -
+                /*nodes[i].connected[j].inputWeight **/
+                100) * lx / length;
+                force.y += -this.k1 * (length -
+                /*nodes[i].connected[j].inputWeight **/
+                100) * ly / length;
                 // console.log(nodes[i].data.id + "-" + nodes[i].connected[j].data.id + "=" + length + " needed:" + nodes[i].connected[j].inputWeight * 100);
                 //                 console.log(nodes[i].data.id + "-" + nodes[i].connected[j].data.id + "force: " + force.x + " " + force.y);
             }
@@ -54,8 +107,8 @@ Graph.redraw = function() {
                 x: 0,
                 y: 0
             };
-            nodes[i].velocity.x = (nodes[i].velocity.x + 0.1 * force.x ) * 0.5;
-            nodes[i].velocity.y = (nodes[i].velocity.y + 0.1 * force.y ) * 0.5;
+            nodes[i].velocity.x = (nodes[i].velocity.x + 0.1 * force.x) * 0.5;
+            nodes[i].velocity.y = (nodes[i].velocity.y + 0.1 * force.y) * 0.5;
             this.totalEnergy.x += nodes[i].velocity.x * nodes[i].velocity.x;
             this.totalEnergy.y += nodes[i].velocity.y * nodes[i].velocity.y;
             // console.log("force", force.x, force.y);
@@ -71,120 +124,102 @@ Graph.redraw = function() {
 
 };
 
-// Graph.getForce = function(nodes, node) {
-    // var fu = {
-        // x: 0,
-        // y: 0
-    // };
-    // var g = {
-        // x: 0,
-        // y: 0
-    // };
-    // for (var i = 0; i < node.connected.length; i++) {
-        // //TODO: OPTIMIZE!!!!
-        // var lx = node.getX() - node.connected[i].getX();
-        // var ly = node.getY() - node.connected[i].getY();
-        // var length = Math.sqrt(lx * lx + ly * ly);
-        // fu.x += this.k1 * (length - node.connected[i].inputWeight * 100) * lx / length;
-        // fu.y += this.k1 * (length - node.connected[i].inputWeight * 100) * ly / length;
-        // g.x += this.lambda2 / (node.connected.length + node.connected[i].connected.length) * lx / length / length / length;
-        // g.y += this.lambda2 / (node.connected.length + node.connected[i].connected.length) * ly / length / length / length;
-    // }
-
-    // return {
-        // x: fu.x + g.x,
-        // y: fu.y + g.y
-    // };
-// };
-
-
-Graph.generate = function() {
-    this.generateGroups(this.groupLayer);
-    this.generateNet(this.linesLayer);
-	this.redraw(this.groupLayer.children);
-    this.stage.add(this.linesLayer);
-    this.stage.add(this.groupLayer);
-    this.stage.draw();
-};
-
-Graph.generateGroups = function(layer) {
-    for (var i = 0; i < this.content.length; i++) {
-        var group = new Kinetic.Group({
-            x: jQuery.randomBetween(this.stage.getWidth() / 2 - 200, this.stage.getWidth() / 2 + 200),
-            y: jQuery.randomBetween(this.stage.getHeight() / 2 - 200, this.stage.getHeight() / 2 + 200),
-            draggable: true
-        });
-        group.add(new Kinetic.Circle({
-            radius: 30,
-            fill: "green",
+Graph.drawNet = function() {
+    if (this.content.length > 0) {
+        var netShape = new Kinetic.Shape({
+            drawFunc: function() {
+                var context = this.getContext();
+                context.beginPath();
+                Graph.drawNextLine(Graph.content[0], context);
+		        //clear
+		        $.each(Graph.content,
+		        function() {
+		            this.inputLinesFrom = new Array();
+		        });
+                context.closePath();
+                this.applyStyles();
+            },
             stroke: "black",
-            strokeWidth: 3
-        }));
-        group.add(new Kinetic.Text({
-            text: this.content[i].name,
-            textSize: 16,
-            padding: 15,
-            fontFamily: "Verdana",
-            textFill: "black",
-            align: "center",
-            verticalAlign: "middle"
-        }));
-        group.on("mouseover",
-        function() {
-            document.body.style.cursor = "pointer";
+            strokeWidth: 2
         });
-        group.on("mouseout",
-        function() {
-            document.body.style.cursor = "default";
-        });
-        group.on("mousedown",
-        function() {
-            this.moveToTop();
-            Graph.redraw(layer.children);
-			//UI.stage.draw();
-        });
-        group.on("dragmove",
-        function() {
-            UI.linesLayer.draw();
-        });
-        group.data = this.content[i];
-        group.connected = new Array();
-        layer.add(group);
-    }
-    //connect ui groups
-    for (var i = 0; i < layer.children.length; i++) {
-        for (var j = 0; j < layer.children[i].data.connected.length; j++) {
-            var connectTo = $(layer.children).filter(function() {
-                return this.data.id == layer.children[i].data.connected[j].dest.id;
-            })[0];
-            connectTo.inputWeight = layer.children[i].data.connected[j].weight;
-            if (connectTo)
-            layer.children[i].connected.push(connectTo);
-        }
+        this.linesLayer.add(netShape);
     }
 };
+//recursive drawing
+Graph.drawNextLine = function(currentNode, context) {
+	for (var i=0; i<currentNode.connected.length; i++) {
+		context.moveTo(currentNode.shape.getX(), currentNode.shape.getY());
+		if (jQuery.inArray(currentNode.id, currentNode.connected[i].dest.inputLinesFrom) == -1 && jQuery.inArray(currentNode.connected[i].dest.id, currentNode.inputLinesFrom) == -1) {
+			context.lineTo(currentNode.connected[i].dest.shape.getX(), currentNode.connected[i].dest.shape.getY());
+            currentNode.inputLinesFrom.push(currentNode.connected[i].dest.id);
+            currentNode.connected[i].dest.inputLinesFrom.push(currentNode.id);
+            this.drawNextLine(currentNode.connected[i].dest, context);
+		}
+	}
+};
 
-Graph.generateNet = function(layer) {
-    var net = new Kinetic.Shape({
-        drawFunc: function() {
-            var context = this.getContext();
-            context.beginPath();
-            for (var i = 0; i < Graph.groupLayer.children.length; i++) {
-                for (var j = 0; j < Graph.groupLayer.children[i].connected.length; j++) {
-                    // console.log(UI.groupLayer.children);
-                    var connectedTo = $(Graph.groupLayer.children).filter(function() {
-                        return this.data.id == Graph.groupLayer.children[i].data.connected[j].dest.id;
-                    })[0];
-                    // console.log(connectedTo);
-                    context.moveTo(Graph.groupLayer.children[i].getX(), Graph.groupLayer.children[i].getY());
-                    context.lineTo(connectedTo.getX(), connectedTo.getY());
-                }
-            }
-            context.closePath();
-            this.applyStyles();
-        },
+Graph.createShape = function(node, x, y) {
+    console.log("creating", x, y);
+    var shape = new Kinetic.Group({
+        x: x,
+        y: y,
+        draggable: true
+    });
+    shape.add(new Kinetic.Circle({
+        radius: 30,
+        fill: "green",
         stroke: "black",
         strokeWidth: 3
+    }));
+    shape.add(new Kinetic.Text({
+        text: node.name,
+        textSize: 16,
+        padding: 15,
+        fontFamily: "Verdana",
+        textFill: "black",
+        align: "center",
+        verticalAlign: "middle"
+    }));
+    shape.on("mouseover",
+    function() {
+	    this.moveToTop();
+        document.body.style.cursor = "pointer";
+		this.transitionTo({
+			scale: {
+				x: 2,
+				y: 2
+			},
+			duration: 0.5,
+			easing: 'ease-out'
+		});
     });
-    layer.add(net);
+    shape.on("mouseout",
+    function() {
+        document.body.style.cursor = "default";
+		this.transitionTo({
+			scale: {
+				x: 1,
+				y: 1
+			},
+			duration: 0.5,
+			easing: 'ease-out'
+		});
+    });
+    shape.on("mousedown",
+    function() {
+		console.log(this);
+        //Graph.redraw(layer.children);
+        //UI.stage.draw();
+    });
+    shape.on("dragmove",
+    function() {
+		Graph.linesLayer.draw();
+        // Graph.stage.draw();
+    });
+    shape.data = node;
+    shape.connected = new Array();
+    node.inputLinesFrom = new Array();
+    shape.data.created = true;
+	node.shape = shape;
+    return shape;
 };
