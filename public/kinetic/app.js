@@ -2,9 +2,9 @@ function appInit() {
 	app = new function() {
 		ui = new UI();
 		setInterval(function() {
-			Graph.redraw(UI.groupLayer.children);
+			Graph.redraw();
 			//UI.stage.draw();
-		}, 25);
+		}, 1);
 	};
 }
 
