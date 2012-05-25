@@ -1,12 +1,13 @@
-function appInit() {
-	app = new function() {
-		ui = new UI();
-		// setInterval(function() {
-		// 			//Graph.redraw();
-		// 			//UI.stage.draw();
-		// 		}, 1);
-	};
-}
+App = function() {}
+App.init = function() {
+	this.ui = new UI();
+	setInterval(this.ui.graph.adjust, 500);
+};
+App.log = function(data) {
+	if (typeof(console) !== 'undefined')
+		console.log(data);
+};
+
 
 jQuery.extend({
 	random: function(X) {
